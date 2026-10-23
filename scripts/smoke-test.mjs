@@ -1,0 +1,52 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+import { readFile, mkdir } from 'node:fs/promises';
+
+await mkdir('test-results', { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true });
+const errors = []; page.on('pageerror', error => errors.push(error.message));
+let passed = 0;
+function ok(name) { console.log(`PASS ${++passed}: ${name}`); }
+try {
+  await page.goto(process.env.TEST_URL || 'http://127.0.0.1:5173/', { waitUntil: 'networkidle' });
+  await page.locator('.map-loading').waitFor({ state: 'detached' });
+  assert.equal(await page.locator('.layer-item').count(), 2);
+  assert.match(await page.locator('.boundary-file').innerText(), /Kerala/);
+  await page.screenshot({ path: 'test-results/desktop.png', fullPage: true }); ok('reference map and state geometry load without live tile services');
+  await page.getByRole('button', { name: 'Close place insights', exact: true }).click();
+  await page.locator('.draw-tools button').filter({ hasText: 'Polygon' }).click();
+  for (const [x, y] of [[730, 350], [860, 360], [820, 475], [730, 350]]) await page.mouse.click(x, y);
+  await page.waitForFunction(() => document.querySelectorAll('.layer-item').length === 3);
+  await page.waitForTimeout(500);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('terra-workspace-v1') || '{}'));
+  assert.equal(stored.features.at(-1).geometry.type, 'Polygon');
+  const ring = stored.features.at(-1).geometry.coordinates[0]; assert.deepEqual(ring[0], ring.at(-1)); ok('map clicks create a closed polygon and persist it');
+  await page.getByRole('button', { name: 'Export GeoJSON', exact: true }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export 3 layers', exact: true }).click();
+  const download = await downloadPromise;
+  const geojson = JSON.parse(await readFile(await download.path(), 'utf8'));
+  assert.equal(geojson.type, 'FeatureCollection'); assert.equal(geojson.features.length, 3);
+  assert.ok(!('visible' in geojson.features[0].properties)); ok('GeoJSON download contains the actual three layers without UI-only properties');
+  await page.reload({ waitUntil: 'networkidle' }); assert.equal(await page.locator('.layer-item').count(), 3); ok('workspace survives a page reload');
+  await page.getByRole('tab', { name: 'Routes', exact: true }).click();
+  await page.locator('.route-modes button').filter({ hasText: 'Ship' }).click();
+  await page.getByRole('button', { name: 'Find a route', exact: true }).click();
+  await page.locator('.route-result').waitFor();
+  assert.match(await page.locator('.route-result').innerText(), /APPROXIMATE SEA ROUTE/); ok('ship routing calculates an actual maritime network path');
+  await page.locator('.route-modes button').filter({ hasText: 'Flight' }).click();
+  await page.getByRole('button', { name: 'Find a route', exact: true }).click();
+  await page.locator('.route-result').waitFor();
+  assert.match(await page.locator('.route-result').innerText(), /GREAT-CIRCLE PATH/); ok('flight routing calculates a great-circle path');
+  await page.getByRole('tab', { name: 'Draw', exact: true }).click();
+  assert.equal(await page.locator('.layer-item').count(), 4); ok('recalculating a route replaces its workspace layer');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Toggle workspace tools', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('.sidebar')?.getBoundingClientRect().x >= -1);
+  await page.getByRole('button', { name: 'Toggle workspace tools', exact: true }).click();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.screenshot({ path: 'test-results/mobile.png', fullPage: true }); ok('mobile layout fits its viewport and workspace controls open');
+  assert.deepEqual(errors, []); ok('no browser runtime errors');
+  console.log(`\n${passed} browser checks passed.`);
+} finally { await browser.close(); }
