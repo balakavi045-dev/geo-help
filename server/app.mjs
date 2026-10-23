@@ -107,7 +107,7 @@ export function createApp({ upstream = provider } = {}) {
     const lat = coordinate(req.query.lat, 'latitude'), lon = coordinate(req.query.lon, 'longitude');
     const year = req.query.year === undefined ? new Date().getUTCFullYear() - 1 : Number(req.query.year);
     if (!Number.isInteger(year) || year < 1950 || year >= new Date().getUTCFullYear()) throw new ServiceError('Choose a completed year from 1950 through last year.');
-    const data = await upstream(`https://archive-api.open-meteo.com/v1/archive?${new URLSearchParams({ latitude: String(lat), longitude: String(lon), start_date: `${year}-01-01`, end_date: `${year}-12-31`, daily: 'precipitation_sum', timezone: 'UTC', models: 'era5_land' })}`);
+    const data = await upstream(`https://archive-api.open-meteo.com/v1/archive?${new URLSearchParams({ latitude: String(lat), longitude: String(lon), start_date: `${year}-01-01`, end_date: `${year}-12-31`, daily: 'precipitation_sum', timezone: 'UTC', models: 'era5' })}`);
     res.json(rainfallSummary(data, lat, lon, year));
   });
   app.get('/api/dem', (req, res) => res.json(demTile(coordinate(req.query.lat, 'latitude'), coordinate(req.query.lon, 'longitude'))));

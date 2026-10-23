@@ -46,7 +46,7 @@ export function rainfallSummary(data, lat, lon, year) {
   const total = complete.every(n => n !== null) ? Number(complete.reduce((a, b) => a + b, 0).toFixed(1)) : null;
   return {
     year, monthly_mm: complete, annual_mm: total, missing_days: missing.reduce((a, b, m) => a + b + Math.max(0, expectedDays[m] - days[m]), 0),
-    feature: { type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { year, annual_precipitation_mm: total, monthly_precipitation_mm: complete, source: 'Open-Meteo · ERA5-Land', license: 'CC BY 4.0', resolution: 'Approximately 9 km', data_kind: 'Modeled reanalysis, not a rain gauge observation' } },
+    feature: { type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: { year, annual_precipitation_mm: total, monthly_precipitation_mm: complete, source: 'Open-Meteo · ERA5', license: 'CC BY 4.0', resolution: 'Approximately 25 km', data_kind: 'Modeled reanalysis, not a rain gauge observation' } },
   };
 }
 export function demTile(lat, lon) {

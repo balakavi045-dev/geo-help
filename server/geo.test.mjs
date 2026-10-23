@@ -85,6 +85,6 @@ test('API returns attributed real provider data and mapped road geometry', async
   const road = await (await fetch(`${base}/route?from=76,10&to=76.1,10.1&mode=car`)).json();
   assert.equal(road.properties.distance_km, 12); assert.equal(road.properties.duration_s, 900);
   const rain = await (await fetch(`${base}/rainfall?lat=10&lon=76&year=2025`)).json();
-  assert.equal(rain.annual_mm, 365); assert.match(rain.feature.properties.source, /ERA5-Land/);
+  assert.equal(rain.annual_mm, 365); assert.match(rain.feature.properties.source, /ERA5/);
   assert.equal((await fetch(`${base}/boundaries?lat=10&lon=76&level=village`)).status, 404);
 });

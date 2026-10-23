@@ -6,6 +6,8 @@ A complete React + TypeScript map workspace for drawing, routing, exploring open
 
 Requires **Node.js 24.5+** (uses Node's verified environment-proxy support) and npm.
 
+**Opening `index.html` directly shows an empty page.** This React app needs its development server and data API. On Windows, install Node.js 24, then double-click `START-WINDOWS.bat`. Keep the terminal open and visit **http://localhost:5173**. Alternatively, use the commands below on Windows, macOS, or Linux.
+
 ```bash
 npm ci
 npm run dev
@@ -30,7 +32,7 @@ Set `PORT` to change the production port. Deploy to any host that runs a persist
 - Export bundled reference state boundaries, or request mapped state, district, and village polygons containing a point through Overpass. Verify returned administrative levels and names: levels vary between countries, and small-area coverage is incomplete.
 - Get surface elevation at a selected point via Open-Meteo and export it as a 3D GeoJSON point.
 - Locate the full 1° Copernicus GLO-30 DEM GeoTIFF tile for a point. These potentially large raster downloads are **not clipped to drawn polygons**. Raster data is GeoTIFF, not GeoJSON.
-- Get historical ERA5-Land precipitation, view monthly totals, and export a point with monthly/annual rainfall properties. This is modeled reanalysis, not observed station rainfall.
+- Get historical ERA5 precipitation, view monthly totals, and export a point with monthly/annual rainfall properties. This is modeled reanalysis, not observed station rainfall.
 - Light reference basemap, live CARTO street tiles, and live OpenTopoMap terrain tiles.
 - Responsive interface, keyboard cancellation, accessible controls, and downloadable open data credits.
 
@@ -46,7 +48,7 @@ The initial workspace includes two clearly removable example features around Ker
 | [OSRM](https://project-osrm.org/) | Road paths and estimated travel times | BSD 2-Clause software, OSM data ODbL; demo service has no uptime guarantee |
 | [Searoute.js](https://www.npmjs.com/package/searoute-js) / [Eurostat](https://github.com/eurostat/searoute) | Approximate maritime network paths | MIT; visualization only, not marine navigation |
 | [Turf.js](https://turfjs.org/) | Geodesic measurements and great-circle paths | MIT; flight geometry is not a scheduled flight or aviation route |
-| [Open-Meteo](https://open-meteo.com/en/terms) | GLO-90 point elevations and ERA5-Land precipitation | Data CC BY 4.0; free endpoint is subject to non-commercial usage limits; review terms before commercial deployment |
+| [Open-Meteo](https://open-meteo.com/en/terms) | GLO-90 point elevations and ERA5 precipitation | Data CC BY 4.0; free endpoint is subject to non-commercial usage limits; review terms before commercial deployment |
 | [Copernicus DEM](https://registry.opendata.aws/copernicus-dem/) | 30 m full surface elevation raster tiles | Copernicus DEM license; terrain includes vegetation/buildings, and some ocean tiles are absent |
 | [CARTO](https://carto.com/attributions) | Optional street tiles | CARTO and OpenStreetMap attribution; review basemap service terms |
 | [OpenTopoMap](https://opentopomap.org/about) | Optional terrain tiles | Map style CC BY-SA; OSM and SRTM source credits |
