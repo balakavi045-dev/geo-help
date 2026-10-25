@@ -88,3 +88,14 @@ test('API returns attributed real provider data and mapped road geometry', async
   assert.equal(rain.annual_mm, 365); assert.match(rain.feature.properties.source, /ERA5/);
   assert.equal((await fetch(`${base}/boundaries?lat=10&lon=76&level=village`)).status, 404);
 });
+test('extract API selects river lines, preserves attribution, validates filters, and exports GIS formats', async t => {
+  let requested = '';
+  const app = createApp({ upstream: async url => { requested = new URL(url).searchParams.get('data'); return { elements: [{ type:'way', id:123, nodes:[1,2], tags:{ waterway:'river', name:'Test river' }, geometry:[{lat:10,lon:76},{lat:10.1,lon:76.1}] }] }; } });
+  const server = app.listen(0,'127.0.0.1'); await new Promise(resolve=>server.once('listening',resolve)); t.after(()=>server.close());
+  const base=`http://127.0.0.1:${server.address().port}/api`;
+  const response=await fetch(`${base}/extract?lat=10&lon=76&kind=rivers&radius=2`); assert.equal(response.status,200);
+  const collection=await response.json(); assert.equal(collection.features.length,1); assert.equal(collection.features[0].geometry.type,'LineString'); assert.equal(collection.features[0].properties.license,'ODbL 1.0'); assert.match(requested,/around:2000/); assert.match(requested,/river\|stream\|canal/);
+  for (const params of ['kind=invalid','radius=21','radius=-1','kind=constructor']) assert.equal((await fetch(`${base}/extract?lat=10&lon=76&${params}`)).status,400);
+  for (const format of ['kml','shp']) {const r=await fetch(`${base}/export`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({format,collection})});assert.equal(r.status,200);if(format==='kml') assert.match(await r.text(),/Test river/);else assert.equal(Buffer.from(await r.arrayBuffer()).readUInt32LE(),0x04034b50);}
+  const invalid=await fetch(`${base}/export`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({format:'shp',collection:{type:'FeatureCollection',features:[]}})});assert.equal(invalid.status,400);
+});

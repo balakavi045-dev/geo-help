@@ -21,9 +21,16 @@ export function downloadJSON(data: unknown, filename: string) {
   const a = document.createElement('a'); a.href = url; a.download = filename.endsWith('.geojson') ? filename : `${filename}.geojson`; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export function exportFeatures(features: Feature[], filename: string) {
+export type ExportFormat = 'geojson' | 'kml' | 'shp';
+export async function exportFeatures(features: Feature[], filename: string, format: ExportFormat = 'geojson') {
   const cleaned = features.map(f => { const { id, color, visible, ...properties } = f.properties || {}; return { ...f, properties }; });
-  downloadJSON(featureCollection(cleaned), filename);
+  const collection = featureCollection(cleaned);
+  if (format === 'geojson') { downloadJSON(collection, filename); return; }
+  const response = await fetch('/api/export', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ format, collection }) });
+  if (!response.ok) { const data = await response.json(); throw new Error(data.error || 'Export failed.'); }
+  const url = URL.createObjectURL(await response.blob());
+  const a = document.createElement('a'); a.href = url; a.download = `${filename}.${format === 'shp' ? 'zip' : 'kml'}`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function workspaceFeature(f: Feature, name: string, kind = 'drawing', color = '#477b52'): WorkspaceFeature {
   return { ...f, properties: { ...f.properties, id: crypto.randomUUID(), name, kind, color, visible: true } };

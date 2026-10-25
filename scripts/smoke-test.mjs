@@ -12,6 +12,7 @@ try {
   await page.goto(process.env.TEST_URL || 'http://127.0.0.1:5173/', { waitUntil: 'networkidle' });
   await page.locator('.map-loading').waitFor({ state: 'detached' });
   assert.equal(await page.locator('.layer-item').count(), 2);
+  await page.getByRole('tab', { name: 'Boundaries', exact: true }).click();
   assert.match(await page.locator('.boundary-file').innerText(), /Kerala/);
   await page.screenshot({ path: 'test-results/desktop.png', fullPage: true }); ok('reference map and state geometry load without live tile services');
   await page.getByRole('button', { name: 'Close place insights', exact: true }).click();
@@ -22,7 +23,7 @@ try {
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('terra-workspace-v1') || '{}'));
   assert.equal(stored.features.at(-1).geometry.type, 'Polygon');
   const ring = stored.features.at(-1).geometry.coordinates[0]; assert.deepEqual(ring[0], ring.at(-1)); ok('map clicks create a closed polygon and persist it');
-  await page.getByRole('button', { name: 'Export GeoJSON', exact: true }).click();
+  await page.getByRole('button', { name: 'Export data', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export 3 layers', exact: true }).click();
   const download = await downloadPromise;

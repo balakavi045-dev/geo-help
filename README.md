@@ -1,6 +1,6 @@
 # Terra — Your world, mapped.
 
-A complete React + TypeScript map workspace for drawing, routing, exploring open geographic data, and exporting GeoJSON. Includes a Node/Express data API and a bundled Natural Earth reference basemap that works without tile services.
+A complete React + TypeScript map workspace for drawing, routing, exploring open geographic data, and exporting GeoJSON, KML, and zipped Shapefiles. Includes a Node/Express data API and a bundled Natural Earth reference basemap that works without tile services.
 
 ## Run locally
 
@@ -22,6 +22,18 @@ npm start           # Serve production app and API together on port 3001
 ```
 
 Set `PORT` to change the production port. Deploy to any host that runs a persistent Node.js service; **GitHub Pages alone cannot run the API**. Use HTTPS for browser geolocation and clipboard features. Public provider availability is independent of application availability.
+
+## Extract and download geographic data
+
+1. Search for a place or click a point on the map.
+2. Open **Extract** in Place insights. Choose rivers/streams/canals, roads, lakes, or village/hamlet points and a 0.5–20 km search radius.
+3. Click **Extract geography**, then choose **GeoJSON**, **KML**, or **Shapefile ZIP** and download.
+4. For village polygons, use **Boundaries → Village → Find village boundary**. Administrative levels vary by country and OSM coverage is incomplete. These are community-mapped boundaries, not certified cadastral records.
+5. Add boundaries or extracted data to the workspace, then use the top export button to choose layers and any of the three formats.
+
+Extraction returns complete mapped features intersecting the radius; it does not clip them. Start with a small radius in dense areas. Up to 1,000 features can be extracted per request. Live extraction needs Internet access to Overpass and depends on service availability.
+
+Shapefile ZIPs include `.shp`, `.shx`, `.dbf`, `.prj`, and `.cpg`, with separate layers for points, multipoints, lines, and polygons. Coordinates are 2D WGS84. DBF attributes are text with unique field names limited to 10 characters and values limited to 254 UTF-8 bytes. Use GeoJSON to retain full attribute names, nested properties, and elevation coordinates. KML retains feature properties in ExtendedData. Preserve source/license attribution when sharing downloads.
 
 ## Features
 
@@ -89,3 +101,5 @@ CHROMIUM_PATH=/usr/bin/chromium node scripts/smoke-test.mjs
 ```
 
 The smoke check verifies real UI drawing, valid GeoJSON downloads, route generation, local persistence, and a mobile viewport. Screenshots are written to ignored `test-results/`. Live road/weather/Overpass access is checked separately because upstream services may be blocked or unavailable.
+
+The additional deterministic extraction UI check uses fixture data (not live provider data): `node scripts/extraction-smoke.mjs` with the dev servers running. It verifies extraction controls, KML/ZIP downloads, and batch workspace additions.

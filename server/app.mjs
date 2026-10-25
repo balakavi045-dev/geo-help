@@ -1,4 +1,5 @@
 import express from 'express';
+import { kml, shapefile } from './exports.mjs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { bbox, centroid, distance, point } from '@turf/turf';
@@ -59,6 +60,40 @@ async function provider(url, options = {}) {
 export function createApp({ upstream = provider } = {}) {
   const app = express();
   app.disable('x-powered-by');
+  app.use(express.json({ limit: '15mb' }));
+  app.post('/api/export', (req, res) => {
+    const { format, collection } = req.body || {};
+    if (!['kml','shp'].includes(format) || collection?.type !== 'FeatureCollection' || !Array.isArray(collection.features) || !collection.features.length || collection.features.length > 10000) throw new ServiceError('Choose a supported export and 1–10,000 features.');
+    const supported = ['Point','MultiPoint','LineString','MultiLineString','Polygon','MultiPolygon'];
+    let positions = 0;
+    function validate(c) {
+      if (!Array.isArray(c) || !c.length) throw new ServiceError('Invalid geometry coordinates.');
+      if (typeof c[0] === 'number') {
+        if (c.length < 2 || c.some(v => !Number.isFinite(v)) || Math.abs(c[0]) > 180 || Math.abs(c[1]) > 90 || ++positions > 250000) throw new ServiceError('Use valid WGS84 coordinates and fewer than 250,000 positions.');
+      } else c.forEach(validate);
+    }
+    for (const f of collection.features) {
+      if (f.type !== 'Feature' || !supported.includes(f.geometry?.type)) throw new ServiceError('Unsupported geometry.');
+      validate(f.geometry.coordinates);
+    }
+    res.type(format === 'kml' ? 'application/vnd.google-earth.kml+xml' : 'application/zip').send(format === 'kml' ? kml(collection) : shapefile(collection));
+  });
+  app.get('/api/extract', async (req, res) => {
+    const lat = coordinate(req.query.lat, 'latitude'), lon = coordinate(req.query.lon, 'longitude');
+    const radius = Number(req.query.radius || 5), kind = String(req.query.kind || 'rivers');
+    if (!Number.isFinite(radius) || radius < 0.5 || radius > 20) throw new ServiceError('Choose a radius from 0.5 to 20 km.');
+    const filters = { rivers: 'way["waterway"~"^(river|stream|canal)$"]', roads: 'way["highway"]', lakes: 'nwr["natural"="water"]', villages: 'node["place"~"^(village|hamlet)$"]' };
+    if (!Object.hasOwn(filters, kind)) throw new ServiceError('Choose rivers, roads, lakes, or villages.');
+    const query = `[out:json][timeout:25];${filters[kind]}(around:${radius*1000},${lat},${lon});out geom;`;
+    const data = await upstream(`https://overpass-api.de/api/interpreter?${new URLSearchParams({ data: query })}`);
+    if (data.remark) throw new ServiceError('The extraction query did not complete. Reduce the radius and retry.', 503);
+    const collection = osmtogeojson(data, { flatProperties: true });
+    const expected = { rivers: ['LineString','MultiLineString'], roads: ['LineString','MultiLineString'], lakes: ['Polygon','MultiPolygon'], villages: ['Point'] };
+    collection.features = collection.features.filter(f => expected[kind].includes(f.geometry?.type) && !f.properties?.tainted).map(f => ({ ...f, properties: { ...f.properties, source: 'OpenStreetMap · Overpass', license: 'ODbL 1.0', dataset: kind, selection: `Intersects ${radius} km search radius; full features, not clipped` } }));
+    if (!collection.features.length) throw new ServiceError('No mapped features found. Try another location or radius.', 404);
+    if (collection.features.length > 1000) throw new ServiceError('More than 1,000 features found. Reduce the radius.', 422);
+    res.json(collection);
+  });
   app.get('/api/health', (_req, res) => res.json({ status: 'ok', reference_places: places.features.length, reference_states: states.features.length }));
   app.get('/api/search', async (req, res) => {
     const q = String(req.query.q || '').trim();
@@ -116,7 +151,7 @@ export function createApp({ upstream = provider } = {}) {
     app.get('/{*path}', (_req, res) => res.sendFile(fileURLToPath(new URL('../dist/index.html', import.meta.url))));
   }
   app.use((err, _req, res, _next) => {
-    const status = err instanceof ServiceError ? err.status : 500;
+    const status = err instanceof ServiceError ? err.status : err.type === 'entity.too.large' ? 413 : err.type === 'entity.parse.failed' ? 400 : 500;
     if (status === 500) console.error(err);
     res.status(status).json({ error: status === 500 ? 'Something went wrong. Please try again.' : err.message });
   });

@@ -4,9 +4,12 @@ import type { Feature, FeatureCollection } from 'geojson';
 import { api, exportFeatures, measure } from '../lib';
 import type { Dataset, Place } from '../types';
 
+import ExtractPanel from './ExtractPanel';
+
 type Rain = { year: number; monthly_mm: (number | null)[]; annual_mm: number | null; missing_days: number; feature: Feature };
 type DEM = { url: string; name: string; note: string; bounds: number[] };
-export default function DataPanel({ place, boundary, dataset, onDataset, onAdd, onClose, onFit, onMessage }: {
+export default function DataPanel({ place, boundary, dataset, onDataset, onAdd, onAddMany, onClose, onFit, onMessage }: {
+  onAddMany: (features: Feature[]) => void;
   place: Place; boundary: Feature | null; dataset: Dataset; onDataset: (dataset: Dataset) => void;
   onAdd: (feature: Feature, name: string, kind: string) => void; onClose: () => void; onFit: (feature: Feature) => void; onMessage: (message: string) => void;
 }) {
@@ -50,11 +53,13 @@ export default function DataPanel({ place, boundary, dataset, onDataset, onAdd, 
     <button className="place-coordinates" title="Copy coordinates" onClick={() => { navigator.clipboard?.writeText(`${place.lon.toFixed(5)}, ${place.lat.toFixed(5)}`).then(() => onMessage('Coordinates copied: longitude, latitude.')).catch(() => onMessage(`${place.lon.toFixed(5)}, ${place.lat.toFixed(5)}`)); }}><ScanLine size={13} />{Math.abs(place.lat).toFixed(4)}° {place.lat < 0 ? 'S' : 'N'}<span>·</span>{Math.abs(place.lon).toFixed(4)}° {place.lon < 0 ? 'W' : 'E'}</button>
     <div className="insights-stats"><div><small>BOUNDARY AREA</small><strong>{boundary ? measure(boundary) : 'Select a boundary'}</strong></div><div><small>DATA ACCESS</small><strong><span className="tiny-dot" /> Open source</strong></div></div>
     <div className="dataset-tabs" role="tablist" aria-label="Geographic datasets">
+      <button role="tab" aria-selected={dataset === 'extract'} className={dataset === 'extract' ? 'active' : ''} onClick={() => { onDataset('extract'); setError(''); }}><Database size={15} />Extract</button>
       <button role="tab" aria-selected={dataset === 'boundary'} className={dataset === 'boundary' ? 'active' : ''} onClick={() => { onDataset('boundary'); setError(''); }}><Layers size={15} />Boundaries</button>
       <button role="tab" aria-selected={dataset === 'elevation'} className={dataset === 'elevation' ? 'active' : ''} onClick={() => { onDataset('elevation'); setError(''); }}><Mountain size={15} />Elevation</button>
       <button role="tab" aria-selected={dataset === 'rainfall'} className={dataset === 'rainfall' ? 'active' : ''} onClick={() => { onDataset('rainfall'); setError(''); }}><CloudRain size={15} />Rainfall</button>
     </div>
     <div className="dataset-content">
+      {dataset === 'extract' && <ExtractPanel place={place} onAddMany={onAddMany} onFit={onFit} onMessage={onMessage} />}
       {dataset === 'boundary' && <>
         <div className="section-label">ADMINISTRATIVE BOUNDARIES</div>
         <div className="boundary-levels">{['state', 'district', 'village'].map(l => <button key={l} className={level === l ? 'active' : ''} onClick={() => { setLevel(l); setRemoteBoundaries([]); setBoundaryIndex(0); setError(''); setAdded(''); }}>{l}</button>)}</div>

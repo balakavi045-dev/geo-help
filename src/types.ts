@@ -1,7 +1,7 @@
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
 export type WorkspaceFeature = Feature<Geometry, { id: string; name: string; color: string; visible: boolean; kind: string; [key: string]: unknown }>;
 export type Place = { id: string; name: string; label: string; lat: number; lon: number; type: string; country?: string; source?: string; boundaryKey?: string; bounds?: number[] };
-export type Dataset = 'boundary' | 'elevation' | 'rainfall';
+export type Dataset = 'boundary' | 'elevation' | 'rainfall' | 'extract';
 export type DrawTool = 'Polygon' | 'Line' | 'Marker' | 'Rectangle';
 export type Tab = 'draw' | 'route' | 'data';
 export type GeoData = FeatureCollection;
